@@ -47,10 +47,10 @@ const PSH = process.env.DSH_LOOK_POWERSHELL || 'powershell.exe'
 const DATA_DIR = process.env.DSH_LOOK_DATA || join(tmpdir(), 'dsh-look')
 try {
   mkdirSync(DATA_DIR, { recursive: true })
-const MARK = join(DATA_DIR, '.load.log')
 } catch {
   /* 建不出目录就让后面各自报错 */
 }
+const MARK = join(DATA_DIR, '.load.log')
 const PICKED = join(DATA_DIR, 'picked.json')
 const STATE = join(DATA_DIR, 'state.json')
 
