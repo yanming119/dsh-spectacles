@@ -35,7 +35,7 @@ So the plugin does three things: **where to look, how much to enlarge, and when 
 ## Install
 
 ```
-dsh plugin --profile desktop add github:yanming119/dsh-spectacles#v1.0.0
+dsh plugin --profile desktop add github:yanming119/dsh-spectacles#v1.0.1
 ```
 
 Restart DSH. A pill button labelled **戴上眼镜** (put on the glasses) appears in the bottom-right corner.

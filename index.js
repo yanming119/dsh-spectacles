@@ -147,12 +147,12 @@ function runPs(script, argv) {
   })
 }
 
-function runLook(args) {
+function runLook(args, via) {
   guardWindow('look', args)
   guardOut(args)
   const p = runLookRaw(args)
   return p.then((cap) => {
-    audit({ tool: 'look', window: args.window || null, crop: args.crop || null, region: (cap && cap.region) || null, png: (cap && cap.png) || null, ok: !!(cap && cap.ok) })
+    audit({ tool: 'look', window: args.window || null, crop: args.crop || null, via: via || null, region: (cap && cap.region) || null, png: (cap && cap.png) || null, ok: !!(cap && cap.ok) })
     return cap
   })
 }
@@ -214,13 +214,13 @@ function makeReadTextTool(defineTool) {
     async execute(args) {
       const g = gate(readState(), args)
       if (!g.ok) throw new Error(g.error)
-      return await runReadText(args || {})
+      return await runReadText(g.args, g.via)
     },
     presentCall: (args) => ({ card: 'generic', title: 'read_text', kind: 'other', rawInput: args || {} }),
   })
 }
 
-function runReadText(args) {
+function runReadText(args, via) {
   return (async () => {
     guardWindow('read_text', args)
     let file = args.file ? String(args.file) : ''
@@ -236,7 +236,7 @@ function runReadText(args) {
     if (args.crop) argv.push('-Crop', String(args.crop))
     if (file) argv.push('-File', file)
     const out = await runPs(READ_SCRIPT, argv)
-    audit({ tool: 'read_text', window: args.window || null, crop: args.crop || null, file: file || null, chars: (out && out.chars) || 0, ok: !!(out && out.ok) })
+    audit({ tool: 'read_text', window: args.window || null, crop: args.crop || null, via: via || null, file: file || null, chars: (out && out.chars) || 0, ok: !!(out && out.ok) })
     return out
   })()
 }
@@ -255,31 +255,65 @@ async function snap(args) {
   return cap
 }
 
-function runSee(args) {
+/**
+ * 宿主能一口吃下的图：一边超过 ~1800px、或总面积太大，送进去就会被缩小，
+ * 我们要看清的小字正好被糊掉。所以出图前先算，超了就降 scale，降不动就拒绝。
+ */
+const SEE_MAX_PX = 1700000
+const SEE_MAX_SIDE = 1800
+
+function tooBig(size) {
+  return !!size && (size.w * size.h > SEE_MAX_PX || Math.max(size.w, size.h) > SEE_MAX_SIDE)
+}
+
+function runSee(args, via) {
   return (async () => {
     const sw = Date.now()
     let file = args.file ? String(args.file) : ''
     let cap = null
+    let note = ''
+    let scaleUsed = typeof args.scale === 'number' && args.scale > 0 ? args.scale : 1
     if (!file) {
       guardWindow('see', args)
       guardOut(args)
       cap = await snap(args)
       file = cap.png
+      const size = pngSize(file)
+      if (tooBig(size)) {
+        const px = size.w * size.h
+        const f = Math.min(SEE_MAX_PX / px, SEE_MAX_SIDE / Math.max(size.w, size.h))
+        const next = Math.floor(scaleUsed * f * 10) / 10
+        if (next >= 1) {
+          cap = await snap(Object.assign({}, args, { scale: next }))
+          file = cap.png
+          note = '块太大，scale 从 ' + scaleUsed + ' 收到 ' + next + '：再大宿主就会缩小，小字反而糊'
+          scaleUsed = next
+        } else {
+          throw new Error(
+            'see: 这块太大（' + size.w + '×' + size.h + '，约 ' + Math.round(px / 750) + ' token），' +
+              '送进视觉会被宿主缩小、小字反而看不清。把 crop 裁小一点再试（一边别超过 ' + SEE_MAX_SIDE + 'px）。',
+          )
+        }
+      }
     }
     const size = pngSize(file)
     const px = size ? size.w * size.h : 0
+    if (!note && tooBig(size)) note = '这张图偏大，宿主会缩小它；要看清就裁小一点再出'
     mark('see ok png=' + file + ' ' + (size ? size.w + 'x' + size.h : '?') + ' ms=' + (Date.now() - sw))
-    audit({ tool: 'see', window: args.window || null, crop: args.crop || null, scale: args.scale || null, png: file, source: cap ? cap.source : 'file', ok: true })
+    audit({ tool: 'see', window: args.window || null, crop: args.crop || null, scale: scaleUsed, via: via || null, png: file, source: cap ? cap.source : 'file', ok: true })
     return {
       ok: true,
       png: file,
       width: size ? size.w : null,
       height: size ? size.h : null,
       approxTokens: px ? Math.round(px / 750) : null,
+      scale: scaleUsed,
+      note,
       hint: '图已落盘：用 read_image 打开 png 就能看见。看不清就缩小 crop、把 scale 调到 2~4 再出一次。',
       source: cap ? cap.source || (args.window ? 'printwindow' : 'ddagrab') : 'file',
       region: cap ? cap.region : null,
       window: cap ? cap.window : null,
+      via: via || null,
       ms: Date.now() - sw,
     }
   })()
@@ -314,8 +348,8 @@ function makeSeeTool(defineTool) {
           type: 'text',
           text:
             'png: ' + v.png + '\n' +
-            (v.width ? v.width + 'x' + v.height + '  ≈' + v.approxTokens + ' token' : '') +
-            '  ms=' + v.ms + '\n' + (v.hint || ''),
+            (v.width ? v.width + 'x' + v.height + '  ≈' + v.approxTokens + ' token' + (v.scale && v.scale !== 1 ? '  scale=' + v.scale : '') : '') +
+            '  ms=' + v.ms + (v.note ? '\n注意：' + v.note : '') + '\n' + (v.hint || ''),
         },
       ],
     },
@@ -323,7 +357,7 @@ function makeSeeTool(defineTool) {
     async execute(args) {
       const g = gate(readState(), args)
       if (!g.ok) throw new Error(g.error)
-      return await runSee(args || {})
+      return await runSee(g.args, g.via)
     },
     presentCall: (args) => ({ card: 'generic', title: 'see', kind: 'other', rawInput: args || {} }),
   })
@@ -373,7 +407,7 @@ function makeLookTool(defineTool) {  return defineTool({
     async execute(args) {
       const g = gate(readState(), args)
       if (!g.ok) throw new Error(g.error)
-      return await runLook(args || {})
+      return await runLook(g.args, g.via)
     },
     presentCall: (args) => ({ card: 'generic', title: 'look', kind: 'other', rawInput: args || {} }),
   })
@@ -419,13 +453,26 @@ function writeState(next) {
   }
 }
 
-/** 纯函数，方便单测：闸门决策。 */
+/**
+ * 纯函数，方便单测：闸门决策。
+ * 戴着眼镜就是排他的：没传 window 也绝不回退整屏，直接用戴着的那一个窗口；
+ * 摘掉之后所有读屏工具一律拒绝（连同整屏）。
+ */
 export function gate(state, args) {
   if (!state || !state.on) {
     return { ok: false, error: '眼镜没戴：先点右下角「戴上眼镜」，选一个窗口' }
   }
-  if (args && args.window) return { ok: true, mode: 'window' }
-  return { ok: true, mode: 'fullscreen' }
+  const a = Object.assign({}, args || {})
+  let via = 'explicit'
+  if (!a.window) {
+    if (!state.hwnd) {
+      return { ok: false, error: '眼镜戴得不稳：没记住窗口。点一下「戴上眼镜」重新选一个' }
+    }
+    a.window = String(state.hwnd)
+    if (state.crop && !a.crop) a.crop = Array.isArray(state.crop) ? state.crop.join(',') : String(state.crop)
+    via = 'glasses'
+  }
+  return { ok: true, mode: 'window', via, args: a }
 }
 
 function runPick(timeoutSec) {

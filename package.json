@@ -1,6 +1,6 @@
 {
   "name": "dsh-spectacles",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Point at one window and let the agent read it clearly. Window scoped screen reading for DeepSeek Harness: look (numbers first), read_text (OCR), see (crop + zoom handed to the host vision).",
   "license": "Apache-2.0",
   "type": "module",
@@ -21,6 +21,7 @@
     "scripts/",
     "README.md",
     "README.zh.md",
+    "CHANGELOG.md",
     "LICENSE"
   ],
   "keywords": [

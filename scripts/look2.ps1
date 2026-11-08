@@ -1,7 +1,7 @@
 ﻿param(
   [string]$Window = "",
   [string]$Crop = "",
-  [int]$Scale = 1,
+  [double]$Scale = 1.0,
   [switch]$Image,
   [switch]$List,
   [string]$Out = "",
