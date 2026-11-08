@@ -35,7 +35,7 @@ DSH 默认只能看你粘进去的东西。这个插件补的是中间那段：*
 ## 装
 
 ```
-dsh plugin --profile desktop add github:yanming119/dsh-spectacles
+dsh plugin --profile desktop add github:yanming119/dsh-spectacles#v1.0.0
 ```
 
 装完重启 DSH，右下角会多出一个胶囊按钮「戴上眼镜」。
