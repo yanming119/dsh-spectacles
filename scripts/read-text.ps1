@@ -65,8 +65,38 @@ function Ocr-Scaled($img, [int]$scale, [string]$tag) {
   return @($r.Lines | ForEach-Object { $_.Text })
 }
 
-$h1 = @(Ocr-Scaled $base $S1 "a")
-$h2 = @(Ocr-Scaled $base $S2 "b")
+# Windows OCR 有单边像素上限（OcrEngine.MaxImageDimension），整屏放大 3x/4x 会超限
+$maxDim = 10000
+try { $maxDim = [int][Windows.Media.Ocr.OcrEngine]::MaxImageDimension } catch {}
+if ($maxDim -le 0) { $maxDim = 10000 }
+
+# 图本身比上限还大时先整体缩小（否则连 1x 都过不了）
+$longSide = [Math]::Max($base.Width, $base.Height)
+$capped = $false
+if ($longSide -gt $maxDim) {
+  $f = $maxDim / $longSide
+  $nw = [int][Math]::Max(1, [Math]::Floor($base.Width * $f))
+  $nh = [int][Math]::Max(1, [Math]::Floor($base.Height * $f))
+  $small = New-Object System.Drawing.Bitmap $nw, $nh
+  $gs = [System.Drawing.Graphics]::FromImage($small)
+  $gs.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
+  $gs.DrawImage($base, 0, 0, $nw, $nh)
+  $gs.Dispose()
+  $base.Dispose()
+  $base = $small
+  $capped = $true
+  $longSide = [Math]::Max($nw, $nh)
+}
+
+$cap = [int][Math]::Floor($maxDim / [Math]::Max(1, $longSide))
+if ($cap -lt 1) { $cap = 1 }
+$s1 = [Math]::Min($S1, $cap); if ($s1 -lt 1) { $s1 = 1 }
+$s2 = [Math]::Min($S2, $cap); if ($s2 -lt 1) { $s2 = 1 }
+# 两轮要不同倍率才有比对意义
+if ($s1 -eq $s2 -and $s2 -gt 1) { $s1 = $s2 - 1 }
+
+$h1 = @(Ocr-Scaled $base $s1 "a")
+$h2 = @(Ocr-Scaled $base $s2 "b")
 $base.Dispose()
 $sw.Stop()
 
@@ -112,7 +142,8 @@ foreach ($it in $items) { $chars += $it.text.Length }
 $obj = [ordered]@{
   ok       = $true
   file     = $src
-  scales   = @($S1, $S2)
+  scales   = @($s1, $s2)
+  capped   = $capped
   lines    = $items
   chars    = $chars
   disagree = @($items | Where-Object { -not $_.consistent }).Count

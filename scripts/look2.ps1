@@ -3,6 +3,7 @@
   [string]$Crop = "",
   [int]$Scale = 1,
   [switch]$Image,
+  [switch]$List,
   [string]$Out = "",
   [string]$SaveDir = ""
 )
@@ -87,6 +88,20 @@ function Resolve-Window([string]$sel) {
   return ($all | Where-Object { $_.Title -like "*$sel*" } | Select-Object -First 1)
 }
 
+if ($List) {
+  $all = [W2]::List() | Where-Object { ($_.R - $_.L) -gt 0 -and ($_.B - $_.T) -gt 0 }
+  $rows = @()
+  foreach ($w in $all) {
+    $rows += [ordered]@{
+      hwnd  = [int64]$w.H
+      pid   = $w.Pid
+      title = $w.Title
+      rect  = [ordered]@{ x = $w.L; y = $w.T; w = ($w.R - $w.L); h = ($w.B - $w.T) }
+    }
+  }
+  [ordered]@{ ok = $true; count = $rows.Count; windows = $rows } | ConvertTo-Json -Compress -Depth 6
+  exit 0
+}
 if (-not $Window) { throw "need -Window (hwnd | title | pid:1234)" }
 
 $w = Resolve-Window $Window

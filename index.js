@@ -41,13 +41,13 @@ const SCRIPT = join(SCRIPTS, 'look.ps1')
 const WIN_SCRIPT = join(SCRIPTS, 'look2.ps1')
 const PICK_SCRIPT = join(SCRIPTS, 'look-pick.ps1')
 const READ_SCRIPT = join(SCRIPTS, 'read-text.ps1')
-const MARK = join(PLUGIN_DIR, '.load.log')
 const PSH = process.env.DSH_LOOK_POWERSHELL || 'powershell.exe'
 
 /** 数据目录：设置 DSH_LOOK_DATA 就用它，否则落在系统临时目录下的 dsh-look。 */
 const DATA_DIR = process.env.DSH_LOOK_DATA || join(tmpdir(), 'dsh-look')
 try {
   mkdirSync(DATA_DIR, { recursive: true })
+const MARK = join(DATA_DIR, '.load.log')
 } catch {
   /* 建不出目录就让后面各自报错 */
 }

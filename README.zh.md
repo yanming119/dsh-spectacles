@@ -42,6 +42,17 @@ dsh plugin --profile desktop add github:yanming119/dsh-spectacles
 
 ---
 
+## 自检
+
+不确定这台机器行不行？先跑一遍自检：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\selftest.ps1
+```
+
+会逐项检查 Windows 版本、PowerShell、整屏抓取、单窗口抓取、OCR 引擎和 DPI，每项打一行 `ok` / `FAIL`。加 `-Json` 输出机器可读结果。退出码 `0` 表示必需项全过。
+
+哪项失败，把输出贴到 issue 里——它会直接告诉我们是哪个 Windows 版本或哪种显示设置还需要修。
 ## 用
 
 **三步：**

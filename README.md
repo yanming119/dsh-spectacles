@@ -42,6 +42,17 @@ Restart DSH. A pill button labelled **戴上眼镜** (put on the glasses) appear
 
 ---
 
+## Self-test
+
+Not sure this machine can do it? Run the bundled check first:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\selftest.ps1
+```
+
+It checks the Windows build, PowerShell, full-screen capture, single-window capture, the OCR engine and the DPI settings, then prints one `ok` / `FAIL` line per item. Add `-Json` for machine-readable output. Exit code `0` means every required check passed.
+
+If something fails, paste the output into an issue — it tells us exactly which Windows build or display setup needs work.
 ## Use
 
 **Three steps:**
