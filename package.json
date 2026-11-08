@@ -1,52 +1,59 @@
-﻿{
-    "name":  "dsh-look",
-    "version":  "0.5.0",
-    "description":  "砚明的金丝眼镜 (dsh-spectacles): point at one window, let the agent read it clearly. look (window or screen, numbers first) + read_text (OCR, no images) + see (crop, zoom, hand the PNG to the host vision). One button to put the glasses on.",
-    "license":  "Apache-2.0",
-    "type":  "module",
-    "main":  "index.js",
-    "os":  [
-               "win32"
-           ],
-    "exports":  {
-                    ".":  "./index.js",
-                    "./client":  "./client.js",
-                    "./cordis.patch.yml":  "./cordis.patch.yml",
-                    "./package.json":  "./package.json"
-                },
-    "files":  [
-                  "index.js",
-                  "client.js",
-                  "cordis.patch.yml",
-                  "scripts/",
-                  "README.md",
-                  "README.zh.md",
-                  "LICENSE"
-              ],
-    "keywords":  [
-                     "deepseek",
-                     "dsh",
-                     "plugin",
-                     "vision",
-                     "look",
-                     "spectacles",
-                     "screenshot",
-                     "ocr",
-                     "window-capture"
-                 ],
-    "dsh":  {
-                "manifestVersion":  1,
-                "bundle":  {
-                               "patch":  "./cordis.patch.yml"
-                           },
-                "client":  {
-                               "platform":  "web",
-                               "inject":  [
-
-                                          ]
-                           }
-            },
-    "engines":  {
-                    "node":  "\u003e=22"
-                }
+{
+  "name": "dsh-spectacles",
+  "version": "0.6.0",
+  "description": "Point at one window and let the agent read it clearly. Window scoped screen reading for DeepSeek Harness: look (numbers first), read_text (OCR), see (crop + zoom handed to the host vision).",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "index.js",
+  "os": [
+    "win32"
+  ],
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "index.js",
+    "client.js",
+    "cordis.patch.yml",
+    "scripts/",
+    "README.md",
+    "README.zh.md",
+    "LICENSE"
+  ],
+  "keywords": [
+    "deepseek",
+    "dsh",
+    "plugin",
+    "vision",
+    "look",
+    "spectacles",
+    "screenshot",
+    "ocr",
+    "window-capture"
+  ],
+  "dsh": {
+    "manifestVersion": 1,
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "inject": []
+    }
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yanming119/dsh-spectacles.git"
+  },
+  "homepage": "https://github.com/yanming119/dsh-spectacles",
+  "bugs": {
+    "url": "https://github.com/yanming119/dsh-spectacles/issues"
+  },
+  "author": "yanming119"
 }

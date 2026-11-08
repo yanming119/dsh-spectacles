@@ -13,16 +13,10 @@ if (-not $SaveDir) { $SaveDir = $DataDir }
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.Drawing
 
+# fullscreen capture defaults to GDI: fast (~200ms) and needs no external binary.
+# set DSH_LOOK_FFMPEG only to force the ffmpeg/DXGI path (slower, but sees some hardware overlays).
 $ffmpeg = $env:DSH_LOOK_FFMPEG
-if (-not $ffmpeg) {
-  $cands = @((Join-Path $PSScriptRoot '..\ffmpeg\bin\ffmpeg.exe'))
-  $g = Get-Command ffmpeg.exe -ErrorAction SilentlyContinue
-  if ($g) { $cands += $g.Source }
-  $cands += 'D:\dafeiyu\ffmpeg\bin\ffmpeg.exe'
-  foreach ($c in $cands) { if ($c -and (Test-Path $c)) { $ffmpeg = (Resolve-Path $c).Path; break } }
-}
-if (-not $ffmpeg -or -not (Test-Path $ffmpeg)) { Write-Output '{"ok":false,"error":"ffmpeg not found","hint":"把 ffmpeg 放到插件目录 ffmpeg\\bin\\ffmpeg.exe，或设置环境变量 DSH_LOOK_FFMPEG"}'; exit 1 }
-if (-not (Test-Path $ffmpeg)) { Write-Output '{"ok":false,"error":"ffmpeg not found"}'; exit 1 }
+if ($ffmpeg -and -not (Test-Path $ffmpeg)) { $ffmpeg = '' }
 
 if (-not (Test-Path $SaveDir)) { New-Item -ItemType Directory -Path $SaveDir -Force | Out-Null }
 $stamp = Get-Date -Format 'yyyyMMdd-HHmmss-fff'
@@ -30,7 +24,24 @@ $tmp = Join-Path $SaveDir "raw-$stamp.png"
 $stateFile = Join-Path $SaveDir 'last-grid.txt'
 
 $sw = [Diagnostics.Stopwatch]::StartNew()
-& $ffmpeg -hide_banner -loglevel error -f lavfi -i "ddagrab=0:framerate=1" -vf "hwdownload,format=bgra" -frames:v 1 -y $tmp 2>$null | Out-Null
+$source = 'gdi-copyfromscreen'
+if ($ffmpeg) {
+  $source = 'dxgi-ddagrabb'
+  & $ffmpeg -hide_banner -loglevel error -f lavfi -i "ddagrab=0:framerate=1" -vf "hwdownload,format=bgra" -frames:v 1 -y $tmp 2>$null | Out-Null
+} else {
+  # GDI screen copy (DPI-aware, no external binary)
+  if (-not ('YM.Dpi' -as [type])) {
+    Add-Type -Namespace YM -Name Dpi -MemberDefinition '[DllImport("user32.dll")] public static extern bool SetProcessDPIAware(); [DllImport("user32.dll")] public static extern int GetSystemMetrics(int n);'
+  }
+  [void][YM.Dpi]::SetProcessDPIAware()
+  $sw0 = [YM.Dpi]::GetSystemMetrics(0); $sh0 = [YM.Dpi]::GetSystemMetrics(1)
+  $shot = New-Object System.Drawing.Bitmap $sw0, $sh0
+  $g0 = [System.Drawing.Graphics]::FromImage($shot)
+  $g0.CopyFromScreen(0, 0, 0, 0, (New-Object System.Drawing.Size $sw0, $sh0))
+  $g0.Dispose()
+  $shot.Save($tmp, [System.Drawing.Imaging.ImageFormat]::Png)
+  $shot.Dispose()
+}
 $sw.Stop()
 if (-not (Test-Path $tmp)) { Write-Output '{"ok":false,"error":"capture failed"}'; exit 1 }
 
@@ -109,7 +120,7 @@ Remove-Item $tmp -Force -ErrorAction SilentlyContinue
 $obj = [ordered]@{
   ok         = $true
   when       = (Get-Date).ToString('yyyy-MM-dd HH:mm:ss.fff')
-  source     = 'dxgi-ddagrabb'
+  source     = $source
   screen     = @{ w = $screenW; h = $screenH }
   region     = @{ x = $x; y = $y; w = $w; h = $h }
   captureMs  = $sw.ElapsedMilliseconds
