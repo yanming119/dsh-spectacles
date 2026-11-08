@@ -1,5 +1,7 @@
 # Spectacles · 砚明的金丝眼镜
 
+**V1** — the first release. One job: point at a window, read its text clearly. Nothing else is in here on purpose.
+
 **Point at one window. Let the AI read it clearly.**
 
 Windows only.
