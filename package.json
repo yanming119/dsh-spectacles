@@ -1,50 +1,52 @@
-{
-  "name": "dsh-look",
-  "version": "0.5.0",
-  "description": "砚明的金丝眼镜 (dsh-spectacles): window-scoped screen reading for agents. look (a window or the screen, numbers first) + read_text (OCR without images) + see (crop, zoom, hand the PNG to the host vision). One button to put the glasses on.",
-  "license": "Apache-2.0",
-  "type": "module",
-  "main": "index.js",
-  "os": [
-    "win32"
-  ],
-  "exports": {
-    ".": "./index.js",
-    "./client": "./client.js",
-    "./cordis.patch.yml": "./cordis.patch.yml",
-    "./package.json": "./package.json"
-  },
-  "files": [
-    "index.js",
-    "client.js",
-    "cordis.patch.yml",
-    "scripts/",
-    "README.md",
-    "README.zh.md",
-    "LICENSE"
-  ],
-  "keywords": [
-    "deepseek",
-    "dsh",
-    "plugin",
-    "vision",
-    "look",
-    "spectacles",
-    "screenshot",
-    "ocr",
-    "window-capture"
-  ],
-  "dsh": {
-    "manifestVersion": 1,
-    "bundle": {
-      "patch": "./cordis.patch.yml"
-    },
-    "client": {
-      "platform": "web",
-      "inject": []
-    }
-  },
-  "engines": {
-    "node": ">=22"
-  }
+﻿{
+    "name":  "dsh-look",
+    "version":  "0.5.0",
+    "description":  "砚明的金丝眼镜 (dsh-spectacles): point at one window, let the agent read it clearly. look (window or screen, numbers first) + read_text (OCR, no images) + see (crop, zoom, hand the PNG to the host vision). One button to put the glasses on.",
+    "license":  "Apache-2.0",
+    "type":  "module",
+    "main":  "index.js",
+    "os":  [
+               "win32"
+           ],
+    "exports":  {
+                    ".":  "./index.js",
+                    "./client":  "./client.js",
+                    "./cordis.patch.yml":  "./cordis.patch.yml",
+                    "./package.json":  "./package.json"
+                },
+    "files":  [
+                  "index.js",
+                  "client.js",
+                  "cordis.patch.yml",
+                  "scripts/",
+                  "README.md",
+                  "README.zh.md",
+                  "LICENSE"
+              ],
+    "keywords":  [
+                     "deepseek",
+                     "dsh",
+                     "plugin",
+                     "vision",
+                     "look",
+                     "spectacles",
+                     "screenshot",
+                     "ocr",
+                     "window-capture"
+                 ],
+    "dsh":  {
+                "manifestVersion":  1,
+                "bundle":  {
+                               "patch":  "./cordis.patch.yml"
+                           },
+                "client":  {
+                               "platform":  "web",
+                               "inject":  [
+
+                                          ]
+                           }
+            },
+    "engines":  {
+                    "node":  "\u003e=22"
+                }
 }

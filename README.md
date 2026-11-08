@@ -1,34 +1,32 @@
 # Spectacles · 砚明的金丝眼镜
 
-Let DSH open its eyes — read the window you point at, no screenshots, no uploads.
+**Point at one window. Let the AI read it clearly.**
 
 Windows only.
 
 ---
 
-## Why install it: 60% fewer screenshot tokens
+## What this is
 
-Replacing "screenshot the screen" with "read the one window you picked" costs:
+A pair of glasses for an AI.
 
-| How | Tokens |
-|---|---|
-| Full-screen screenshot | ≈1030 |
-| Whole window | ≈346–451 |
-| Just one patch (a button, a toast, an error box) | ≈100–200 |
+Not a screenshot tool — a screenshot moves the picture away; glasses let you see it.
+Not a monitor — it doesn't watch you. It only looks when you tell it to.
 
-**Screen → window: about 60% less. Screen → patch: over 80% less.**
-
-And OCR text never becomes an image at all — it's far cheaper than a screenshot.
+Out of the box, DSH can only see what you paste in. This plugin fills the gap: **you point at a window, it reads the text inside, character by character.**
 
 ---
 
-## What it solves
+## Why "clearly" is the whole point
 
-Out of the box, DSH can only see what you paste in. This plugin fills the gap:
+The same window, two fates:
 
-- You ask "what does this error say?" — instead of screenshotting, just point at the window
-- Tiny UI text (sidebars, session lists) that plain OCR mangles gets cropped and enlarged first
-- Anything it can't read with confidence is marked `?` — it won't make things up
+- **Whole-window screenshot**: the image is larger than the size limit, so it gets scaled down. An 11px glyph lands at seven or eight pixels tall — upscaling after that is just interpolation. The text is mush.
+- **Glasses**: find the patch, crop it, enlarge it 3×, then hand it to vision. Same text, but legible.
+
+The model isn't the problem. **By the time the image arrives, it's already blurred.**
+
+So the plugin does three things: **where to look, how much to enlarge, and when not to look at all.**
 
 ---
 
@@ -68,7 +66,7 @@ Then just talk:
 |---|---|---|
 | **read_text** | OCR the window into text, run twice and cross-check, mark uncertain lines `?` | You want to know *what it says* |
 | **see** | Crop one patch, upscale 2–4×, hand the PNG to DSH's built-in vision | Small text is blurry, or there's imagery |
-| **look** | Numbers only: window size, dominant colour, edge density, did it change | You want "did anything change" cheaply |
+| **look** | Numbers only: window size, dominant colour, edge density, did it change | You want to know *whether anything moved* |
 
 You don't choose — just speak plainly.
 
