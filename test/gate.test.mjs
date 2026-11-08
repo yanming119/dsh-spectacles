@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { gate } from '../index.js'
+import { gate, stateFromPick } from '../index.js'
 
 const worn = { on: true, hwnd: 4242, title: '微信' }
 
@@ -51,4 +51,25 @@ test('不改调用方传进来的 args', () => {
   const args = {}
   gate(worn, args)
   assert.deepEqual(args, {})
+})
+
+test('选整个窗口：size 就是窗口宽高，没有 crop', () => {
+  const s = stateFromPick({ ok: true, hwnd: 7, title: '微信', pid: 9, rect: [100, 200, 1296, 828] })
+  assert.equal(s.on, true)
+  assert.equal(s.hwnd, 7)
+  assert.deepEqual(s.rect, [100, 200, 1296, 828])
+  assert.equal(s.crop, undefined)
+  assert.deepEqual(s.size, [1296, 828])
+})
+
+test('框一块：crop 和 size 跟着变', () => {
+  const s = stateFromPick({ ok: true, hwnd: 7, title: '微信', rect: [100, 200, 1296, 828], crop: [10, 20, 320, 180] })
+  assert.deepEqual(s.crop, [10, 20, 320, 180])
+  assert.deepEqual(s.size, [320, 180])
+})
+
+test('框一块：送来的是字符串也转换成数字', () => {
+  const s = stateFromPick({ ok: true, hwnd: 7, title: 'x', rect: ['1', '2', '300', '200'], crop: ['5', '6', '64', '32'] })
+  assert.deepEqual(s.crop, [5, 6, 64, 32])
+  assert.deepEqual(s.size, [64, 32])
 })

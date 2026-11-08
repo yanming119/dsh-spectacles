@@ -17,11 +17,37 @@ if (-not (Test-Path $tmpDir)) { New-Item -ItemType Directory -Force -Path $tmpDi
 $src = $File
 if ($Crop -ne '') {
   $stamp = Get-Date -Format 'yyyyMMdd-HHmmss-fff'
-  $src = Join-Path $tmpDir "read-$stamp.png"
-  $look = Join-Path $PSScriptRoot 'look.ps1'
-  $args = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $look, '-Crop', $Crop, '-Image', '-Out', $src)
-  $out = & powershell.exe @args
-  if (-not (Test-Path $src)) { '{"ok":false,"error":"capture failed"}'; exit 1 }
+  $dst = Join-Path $tmpDir "read-$stamp.png"
+  if ($File -ne '' -and (Test-Path $File)) {
+    # 已经有图：从这张图上裁（窗口截图 + 相对窗口的 crop 走这一条）
+    $im = [System.Drawing.Bitmap]::FromFile($File)
+    try {
+      $c = $Crop -split ','
+      if ($c.Length -eq 4) {
+        $rx = [Math]::Max(0, [int]$c[0]); $ry = [Math]::Max(0, [int]$c[1])
+        $rw = [int]$c[2]; $rh = [int]$c[3]
+        if ($rx -ge $im.Width) { $rx = 0 }
+        if ($ry -ge $im.Height) { $ry = 0 }
+        if ($rx + $rw -gt $im.Width) { $rw = $im.Width - $rx }
+        if ($ry + $rh -gt $im.Height) { $rh = $im.Height - $ry }
+        if ($rw -ge 1 -and $rh -ge 1) {
+          $rect = New-Object System.Drawing.Rectangle $rx, $ry, $rw, $rh
+          $bmp = $im.Clone($rect, $im.PixelFormat)
+          $bmp.Save($dst, [System.Drawing.Imaging.ImageFormat]::Png)
+          $bmp.Dispose()
+          $src = $dst
+        }
+      }
+    }
+    finally { $im.Dispose() }
+  }
+  else {
+    # 没有现成的图：整屏抓一块
+    $look = Join-Path $PSScriptRoot 'look.ps1'
+    $larg = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $look, '-Crop', $Crop, '-Image', '-Out', $dst)
+    & powershell.exe @larg | Out-Null
+    if (Test-Path $dst) { $src = $dst }
+  }
 }
 if (-not (Test-Path $src)) { '{"ok":false,"error":"no image"}'; exit 1 }
 
@@ -44,6 +70,25 @@ if ($null -eq $engine) { '{"ok":false,"error":"no ocr engine"}'; exit 1 }
 $base = [System.Drawing.Image]::FromFile($src)
 $sw = [System.Diagnostics.Stopwatch]::StartNew()
 
+function Join-OcrWords($words) {
+  # Windows OCR 把中文的每个字当一个 word，直接拼 $_.Text 会变成「新 会 话」。
+  # 按字框之间的空隙判：挨得紧就连着写，明显分开才补一个空格。
+  $sb = New-Object System.Text.StringBuilder
+  $prev = $null
+  foreach ($w in $words) {
+    $t = $w.Text
+    if ([string]::IsNullOrEmpty($t)) { continue }
+    if ($null -ne $prev) {
+      $gap = $w.BoundingRect.X - ($prev.BoundingRect.X + $prev.BoundingRect.Width)
+      $hh = [Math]::Max($w.BoundingRect.Height, $prev.BoundingRect.Height)
+      if ($gap -gt ($hh * 0.20)) { [void]$sb.Append(' ') }
+    }
+    [void]$sb.Append($t)
+    $prev = $w
+  }
+  return $sb.ToString()
+}
+
 function Ocr-Scaled($img, [int]$scale, [string]$tag) {
   $bw = $img.Width * $scale
   $bh = $img.Height * $scale
@@ -62,7 +107,7 @@ function Ocr-Scaled($img, [int]$scale, [string]$tag) {
   $sb = Await ($dec.GetSoftwareBitmapAsync()) ([Windows.Graphics.Imaging.SoftwareBitmap])
   $r = Await ($engine.RecognizeAsync($sb)) ([Windows.Media.Ocr.OcrResult])
   $st.Dispose()
-  return @($r.Lines | ForEach-Object { $_.Text })
+  return @($r.Lines | ForEach-Object { Join-OcrWords $_.Words })
 }
 
 # Windows OCR 有单边像素上限（OcrEngine.MaxImageDimension），整屏放大 3x/4x 会超限

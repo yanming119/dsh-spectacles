@@ -1,6 +1,6 @@
 # Spectacles · 砚明的金丝眼镜
 
-**V1** — the first release. One job: point at a window, read its text clearly. Nothing else is in here on purpose.
+**V1.1** — one job: point at a window (or frame a patch of it), read its text clearly. Nothing else is in here on purpose.
 
 **Point at one window. Let the AI read it clearly.**
 
@@ -35,7 +35,7 @@ So the plugin does three things: **where to look, how much to enlarge, and when 
 ## Install
 
 ```
-dsh plugin --profile desktop add github:yanming119/dsh-spectacles#v1.0.1
+dsh plugin --profile desktop add github:yanming119/dsh-spectacles#v1.1.0
 ```
 
 Restart DSH. A pill button labelled **戴上眼镜** (put on the glasses) appears in the bottom-right corner.
@@ -57,11 +57,12 @@ It checks the Windows build, PowerShell, full-screen capture, single-window capt
 If something fails, paste the output into an issue — it tells us exactly which Windows build or display setup needs work.
 ## Use
 
-**Three steps:**
+**Four steps:**
 
-1. Click **戴上眼镜** in the bottom-right corner
-2. Within three seconds, click the window you want it to see
-3. The button now reads **金丝: <window title>** — from now on it only reads that window
+1. Click **戴上眼镜** (put on the glasses) in the bottom-right corner
+2. Within thirty seconds, click the window you want it to see
+3. The button now reads **拿下眼镜** (take them off), with a second line: **金丝 · <window title> · 1296×828**
+4. Only need one patch? Click **✥**, then drag a box across the screen. The second line becomes **金丝 · <window title> · 320×180**
 
 Then just talk:
 
@@ -69,7 +70,9 @@ Then just talk:
 > "Read that red line in the top right"
 > "Zoom in on this part"
 
-**Take them off**: click the button again. Once off, it can't read anything.
+**Take them off**: click the main button again. Once off, it can't read anything.
+
+**Wearing = exclusive, off = hands-off.** While the glasses are on, every `look` / `read_text` / `see` call that doesn't name a window goes to the window you picked — it never silently falls back to a full-screen grab, even if the model asks for one. If you framed a patch, that patch is what it gets. Take them off and the same calls are refused outright. (Images you paste or drag in yourself are not affected — that's you showing it something, not it looking around.)
 
 ---
 
@@ -88,7 +91,8 @@ You don't choose — just speak plainly.
 ## Privacy
 
 - **Everything stays local**: capture and OCR run on your machine
-- **One window only**: the one you picked. No full-screen scraping
+- **One window only**: the one you picked (or the patch you framed). No full-screen scraping
+- **No fallback to the whole screen**: while worn, a call without a window lands on yours; there is no code path that quietly grabs everything
 - **No recording, no upload, no frames kept**: PNGs go to a temp dir, delete anytime
 - **Off means off**: clicking the button off makes the tools refuse
 - **No network**: never calls an external vision API
@@ -109,7 +113,7 @@ You don't choose — just speak plainly.
 
 **No button** — the plugin didn't load. Check the DSH startup log for the `look` registration lines.
 
-**Clicking does nothing** — you didn't click a window within three seconds. Try again, faster.
+**Clicking does nothing** — you didn't click a window within thirty seconds. Try again, faster.
 
 **Garbled text** — window too small or unusual font rendering. Ask it to "zoom in on that part".
 

@@ -1,4 +1,4 @@
-# Spectacles self-test
+﻿# Spectacles self-test
 # Runs on a machine where the plugin was just installed and reports what works.
 # Usage:  powershell -NoProfile -ExecutionPolicy Bypass -File selftest.ps1 [-Json]
 # Exit code 0 = all required checks passed, 1 = something required failed.
@@ -22,10 +22,10 @@ Add-Check 'windows' ($os.Major -ge 10) ('Windows ' + $os.Major + '.' + $os.Minor
 $psv = $PSVersionTable.PSVersion
 Add-Check 'powershell' ($psv.Major -ge 5) ('PowerShell ' + $psv.ToString())
 
-$needed = @('look.ps1', 'look2.ps1', 'look-pick.ps1', 'read-text.ps1')
+$needed = @('look.ps1', 'look2.ps1', 'look-pick.ps1', 'read-text.ps1', 'look-region.ps1')
 $missing = @()
 foreach ($n in $needed) { if (-not (Test-Path (Join-Path $here $n))) { $missing += $n } }
-$scriptDetail = 'all 4 scripts present'
+$scriptDetail = 'all ' + $needed.Count + ' scripts present'
 if ($missing.Count -gt 0) { $scriptDetail = 'missing: ' + ($missing -join ', ') }
 Add-Check 'scripts' ($missing.Count -eq 0) $scriptDetail
 

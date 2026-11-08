@@ -41,6 +41,7 @@ const SCRIPT = join(SCRIPTS, 'look.ps1')
 const WIN_SCRIPT = join(SCRIPTS, 'look2.ps1')
 const PICK_SCRIPT = join(SCRIPTS, 'look-pick.ps1')
 const READ_SCRIPT = join(SCRIPTS, 'read-text.ps1')
+const REGION_SCRIPT = join(SCRIPTS, 'look-region.ps1')
 const PSH = process.env.DSH_LOOK_POWERSHELL || 'powershell.exe'
 
 /** 数据目录：设置 DSH_LOOK_DATA 就用它，否则落在系统临时目录下的 dsh-look。 */
@@ -52,6 +53,7 @@ try {
 }
 const MARK = join(DATA_DIR, '.load.log')
 const PICKED = join(DATA_DIR, 'picked.json')
+const REGION = join(DATA_DIR, 'region.json')
 const STATE = join(DATA_DIR, 'state.json')
 
 /** 眼镜不自己跑模型：把块裁好、放大、落成 PNG，交给宿主自带的视觉（read_image）去看。 */
@@ -475,6 +477,29 @@ export function gate(state, args) {
   return { ok: true, mode: 'window', via, args: a }
 }
 
+function readRegion() {
+  try {
+    if (!existsSync(REGION)) return null
+    const j = JSON.parse(readFileSync(REGION, 'utf8').replace(/^\uFEFF/, ''))
+    return j && j.ok && j.hwnd ? j : null
+  } catch {
+    return null
+  }
+}
+
+/** 把一次「选窗口 / 框一块」的结果整理成 state.json 的样子。 */
+export function stateFromPick(p) {
+  const rect = Array.isArray(p.rect) ? p.rect.map(Number) : null
+  const out = { on: true, hwnd: p.hwnd, title: p.title || '', pid: p.pid || null, rect }
+  if (Array.isArray(p.crop) && p.crop.length === 4) {
+    out.crop = p.crop.map(Number)
+    out.size = [out.crop[2], out.crop[3]]
+  } else {
+    out.size = rect ? [rect[2], rect[3]] : null
+  }
+  return out
+}
+
 function runPick(timeoutSec) {
   return new Promise((resolve) => {
     mark('pick start')
@@ -486,11 +511,51 @@ function runPick(timeoutSec) {
         const picked = readPicked()
         if (picked) {
           mark('pick ok: ' + picked.title)
-          resolve({ on: true, title: picked.title, hwnd: picked.hwnd, pid: picked.pid })
+          resolve(stateFromPick(picked))
         } else {
           mark('pick none: ' + ((err && err.message) || 'timeout'))
           resolve({ on: false, error: (err && err.message) || 'timeout' })
         }
+      },
+    )
+  })
+}
+
+/** 框一块：全屏遮罩上拖矩形，松手定住；Esc / 右键取消。 */
+function runRegion(timeoutSec) {
+  return new Promise((resolve) => {
+    if (!existsSync(REGION_SCRIPT)) {
+      resolve({ on: false, error: '这个版本没有框选脚本（look-region.ps1），重装一下插件' })
+      return
+    }
+    try {
+      if (existsSync(REGION)) unlinkSync(REGION)
+    } catch {
+      /* 删不掉就让脚本覆盖 */
+    }
+    mark('region start')
+    execFile(
+      PSH,
+      ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', REGION_SCRIPT, '-TimeoutSec', String(timeoutSec), '-Out', REGION],
+      { windowsHide: true, timeout: (timeoutSec + 20) * 1000 },
+      (err, stdout) => {
+        const r = readRegion()
+        if (r) {
+          mark('region ok: ' + (r.title || '') + ' ' + (r.crop || []).join(','))
+          resolve(stateFromPick(r))
+          return
+        }
+        // 取消 / 超时 / 框在桌面空白：脚本把原因放在最后一行 JSON 里
+        const line = String(stdout || '').trim().split(/\r?\n/).filter(Boolean).pop() || ''
+        let msg = '没框住（取消了或超时）'
+        try {
+          const j = JSON.parse(line)
+          if (j && j.error) msg = String(j.error)
+        } catch {
+          /* 用默认说法 */
+        }
+        mark('region none: ' + msg + (err ? ' / ' + err.message : ''))
+        resolve({ on: false, error: msg })
       },
     )
   })
@@ -532,7 +597,7 @@ export async function apply(ctx) {
     mark('see failed: ' + (error instanceof Error ? error.message : String(error)))
   }
 
-  // 眼镜开关：给界面上那个按钮用（点一下指定窗口，再点一下摘下）
+  // 眼镜开关：给界面上那个按钮用（点一下指定窗口，再点一下摘下；旁边的 ✥ 用来框一块）
   try {
     if (ctx.webServer && typeof ctx.webServer.register === 'function') {
       ctx.effect(() =>
@@ -542,7 +607,17 @@ export async function apply(ctx) {
           handler: async (req, res) => {
             const s = readState()
             res.setHeader('content-type', 'application/json; charset=utf-8')
-            res.end(JSON.stringify({ on: !!s.on, title: s.title || null, hwnd: s.hwnd || null }))
+            res.end(
+              JSON.stringify({
+                on: !!s.on,
+                title: s.title || null,
+                hwnd: s.hwnd || null,
+                rect: s.rect || null,
+                crop: s.crop || null,
+                size: s.size || null,
+                mode: s.crop ? 'region' : s.on ? 'window' : 'off',
+              }),
+            )
           },
         }),
       )
@@ -563,12 +638,28 @@ export async function apply(ctx) {
               // 关着 → 这一下就是开：先选窗口，选到了才算开
               out = await runPick(30)
               if (out && out.on) {
-                writeState({ on: true, hwnd: out.hwnd, title: out.title || '' })
+                writeState(out)
                 mark('gate on: ' + (out.title || out.hwnd))
               }
             }
             res.setHeader('content-type', 'application/json; charset=utf-8')
             res.end(JSON.stringify(out))
+          },
+        }),
+      )
+      ctx.effect(() =>
+        ctx.webServer.register({
+          kind: 'exact',
+          path: '/dsh-look/region',
+          handler: async (req, res) => {
+            // 框一块：全屏遮罩上拖矩形（可跨窗口，最后反查矩形中心落在哪个窗口）
+            const out = await runRegion(60)
+            if (out && out.on) {
+              writeState(out)
+              mark('gate region: ' + (out.title || out.hwnd) + ' ' + (out.crop || []).join(','))
+            }
+            res.setHeader('content-type', 'application/json; charset=utf-8')
+            res.end(JSON.stringify(Object.assign({ ok: !!(out && out.on) }, out)))
           },
         }),
       )
