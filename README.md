@@ -48,6 +48,12 @@ So the plugin does three things: **where to look, how much to enlarge, and when 
 ## Install
 
 ```
+dsh plugin --profile desktop add dsh-spectacles
+```
+
+If you'd rather pin the source (no registry), this works too:
+
+```
 dsh plugin --profile desktop add github:yanming119/dsh-spectacles#1.0.0
 ```
 

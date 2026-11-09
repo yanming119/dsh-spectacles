@@ -48,6 +48,12 @@ DSH 默认只能看你粘进去的东西。这个插件补的是中间那段：*
 ## 装
 
 ```
+dsh plugin --profile desktop add dsh-spectacles
+```
+
+不想走 npm 也行，直接钉源码：
+
+```
 dsh plugin --profile desktop add github:yanming119/dsh-spectacles#1.0.0
 ```
 

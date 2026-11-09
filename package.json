@@ -56,5 +56,8 @@
   "bugs": {
     "url": "https://github.com/yanming119/dsh-spectacles/issues"
   },
-  "author": "yanming119"
+  "author": "yanming119",
+  "publishConfig": {
+    "access": "public"
+  }
 }
