@@ -31,19 +31,15 @@ public class Rg {
 
 $vs = [System.Windows.Forms.SystemInformation]::VirtualScreen
 
-# 先冻一帧屏：遮罩下面是这张定格，选框里露出原图，框外压暗 —— 不动就能选得准
-$bg = New-Object System.Drawing.Bitmap $vs.Width, $vs.Height
-$g0 = [System.Drawing.Graphics]::FromImage($bg)
-$g0.CopyFromScreen($vs.Left, $vs.Top, 0, 0, (New-Object System.Drawing.Size $vs.Width, $vs.Height))
-$g0.Dispose()
-
-$script:bg = $bg
+# 不抓屏幕：这层遮罩只是一块半透明的、能透过它看见下面东西的玻璃，
+# 用来接你的拖动、记下矩形坐标。框选本身不产生任何画面内容。
+$script:W = $vs.Width
+$script:H = $vs.Height
 $script:sel = $null
 $script:dragging = $false
 $script:done = $false
 $script:cancelled = $false
 $script:start = $null
-$script:dim = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(120, 0, 0, 0))
 $script:pen = New-Object System.Drawing.Pen ([System.Drawing.Color]::FromArgb(255, 0, 205, 120)), 2
 $script:penDot = New-Object System.Drawing.Pen ([System.Drawing.Color]::FromArgb(200, 255, 255, 255)), 1
 $script:font = New-Object System.Drawing.Font 'Microsoft YaHei UI', 12, ([System.Drawing.FontStyle]::Bold)
@@ -59,13 +55,14 @@ $form.ShowInTaskbar = $false
 $form.Cursor = [System.Windows.Forms.Cursors]::Cross
 $form.KeyPreview = $true
 $form.BackColor = [System.Drawing.Color]::Black
+$form.Opacity = 0.22
 try { $form.GetType().GetProperty('DoubleBuffered', 'Instance,NonPublic').SetValue($form, $true) } catch {}
 
 function Draw-Tag($g, $text, $x, $y) {
   $sz = $g.MeasureString($text, $script:font)
   $w = [int]$sz.Width + 16; $h = [int]$sz.Height + 8
-  $bx = [Math]::Max(0, [Math]::Min($x, $script:bg.Width - $w))
-  $by = [Math]::Max(0, [Math]::Min($y, $script:bg.Height - $h))
+  $bx = [Math]::Max(0, [Math]::Min($x, $script:W - $w))
+  $by = [Math]::Max(0, [Math]::Min($y, $script:H - $h))
   $g.FillRectangle($script:brBox, $bx, $by, $w, $h)
   $g.DrawString($text, $script:font, $script:brText, ($bx + 8), ($by + 4))
 }
@@ -73,19 +70,12 @@ function Draw-Tag($g, $text, $x, $y) {
 $form.Add_Paint({
     param($s, $e)
     $g = $e.Graphics
-    $g.DrawImageUnscaled($script:bg, 0, 0)
     $r = $script:sel
     if ($r -and $r.Width -gt 0 -and $r.Height -gt 0) {
-      $W = $script:bg.Width; $H = $script:bg.Height
-      $g.FillRectangle($script:dim, 0, 0, $W, [Math]::Max(0, $r.Top))
-      $g.FillRectangle($script:dim, 0, $r.Bottom, $W, [Math]::Max(0, $H - $r.Bottom))
-      $g.FillRectangle($script:dim, 0, $r.Top, [Math]::Max(0, $r.Left), $r.Height)
-      $g.FillRectangle($script:dim, $r.Right, $r.Top, [Math]::Max(0, $W - $r.Right), $r.Height)
       $g.DrawRectangle($script:pen, $r)
       Draw-Tag $g ("{0} x {1}" -f $r.Width, $r.Height) ($r.Left + 6) ($r.Top + 6)
     }
     else {
-      $g.FillRectangle($script:dim, 0, 0, $script:bg.Width, $script:bg.Height)
       Draw-Tag $g '拖一个框；Esc 取消' 40 40
     }
   })

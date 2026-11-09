@@ -29,7 +29,7 @@ public class W2 {
   [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr h, out uint pid);
   [DllImport("user32.dll")] public static extern int GetWindowLong(IntPtr h, int idx);
   [DllImport("user32.dll")] public static extern bool PrintWindow(IntPtr h, IntPtr hdc, uint flags);
-  [DllImport("user32.dll")] public static extern bool SetWindowPos(IntPtr h, IntPtr after, int x, int y, int cx, int cy, uint flags);
+  [DllImport("user32.dll", SetLastError = true)] public static extern bool SetWindowPos(IntPtr h, IntPtr after, int x, int y, int cx, int cy, uint flags);
 
   public struct RECT { public int Left, Top, Right, Bottom; }
 
@@ -129,7 +129,13 @@ if (-not $ok) {
   # 不抢焦点（NOACTIVATE）、不移动、不改大小。
   $exBefore = [W2]::GetWindowLong($w.H, -20)
   $wasTop = (($exBefore -band 0x0008) -ne 0)
-  [W2]::SetWindowPos($w.H, [IntPtr](-1), 0, 0, 0, 0, (0x0002 -bor 0x0001 -bor 0x0010)) | Out-Null
+  $raised = [W2]::SetWindowPos($w.H, [IntPtr](-1), 0, 0, 0, 0, (0x0002 -bor 0x0001 -bor 0x0010))
+  if (-not $raised) {
+    # 置顶被拒（有些游戏/带反截屏保护的程序会拒绝 SetWindowPos）。这时屏幕那块是别的窗口，抓了就是错图，宁可报错。
+    $werr = [System.Runtime.InteropServices.Marshal]::GetLastWin32Error()
+    @{ ok = $false; error = 'raise-failed'; win32Error = $werr; hint = '这个窗口不让被提到最前，此时抓屏会抓到压在上面的窗口，所以没有出图' } | ConvertTo-Json -Compress
+    exit 1
+  }
   try {
     Start-Sleep -Milliseconds 90
     $g2 = [System.Drawing.Graphics]::FromImage($full)
