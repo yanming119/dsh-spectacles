@@ -11,17 +11,28 @@
  * 不依赖 slots，直接挂 DOM，免得 slot 名字变了就整块消失。
  */
 window.__ModuleLoader__.load({
-  id: 'dsh-look',
+  id: 'dsh-spectacles',
   factory: () => {
     const API_STATE = '/dsh-look/state'
     const API_PICK = '/dsh-look/pick'
     const API_REGION = '/dsh-look/region'
+    const API_PING = '/dsh-look/ping'
     const POS_KEY = 'ym-look-pos-v1'
+
+    // 探针：把「渲染层跑没跑、点了没有」写进插件日志，出问题一眼能看出来
+    function ping(what) {
+      try {
+        fetch(API_PING, { method: 'POST', body: String(what || ''), keepalive: true }).catch(() => {})
+      } catch {
+        /* 探针失败不影响正事 */
+      }
+    }
 
     const CSS = `
     .ym-look-wrap {
-      position: fixed; right: 22px; bottom: 118px; z-index: 9998;
+      position: fixed; right: 22px; bottom: 118px; z-index: 2147483000;
       display: inline-flex; align-items: center; gap: 8px;
+      pointer-events: auto;
       cursor: grab; user-select: none; touch-action: none;
     }
     .ym-look-wrap.dragging { cursor: grabbing; }
@@ -78,7 +89,7 @@ window.__ModuleLoader__.load({
 
     .ym-look-toast {
       position: fixed; left: 50%; bottom: 152px; transform: translateX(-50%) translateY(6px);
-      z-index: 9999; max-width: 62vw;
+      z-index: 2147483001; max-width: 62vw;
       padding: 10px 18px 11px; border-radius: 16px;
       font: 500 13.5px/1.35 -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
       color: #26303b; background: rgba(255,255,255,.96);
@@ -183,17 +194,26 @@ window.__ModuleLoader__.load({
       let down = null
       wrap.addEventListener('pointerdown', (e) => {
         if (e.button !== 0) return
-        if (e.target && e.target.closest && e.target.closest('.ym-look-region')) return
         const r = wrap.getBoundingClientRect()
+        // 按钮上按下也允许拖：只是这一刻先不抓指针。
+        // 抓了指针，浏览器就把后面的 click 记到 wrap 头上，按钮永远收不到点击
+        // （之前「点了没反应」就是这么来的）。
         down = { px: e.clientX, py: e.clientY, x: r.left, y: r.top, moved: false, id: e.pointerId }
-        wrap.setPointerCapture(e.pointerId)
       })
       wrap.addEventListener('pointermove', (e) => {
         if (!down || e.pointerId !== down.id) return
         const dx = e.clientX - down.px
         const dy = e.clientY - down.py
         if (!down.moved && Math.abs(dx) + Math.abs(dy) < 4) return
-        down.moved = true
+        if (!down.moved) {
+          down.moved = true
+          // 真的在拖了才抓指针，普通点击不受影响
+          try {
+            wrap.setPointerCapture(e.pointerId)
+          } catch {
+            /* 拿不到也能拖 */
+          }
+        }
         wrap.classList.add('dragging')
         place(down.x + dx, down.y + dy, false)
       })
@@ -245,6 +265,7 @@ window.__ModuleLoader__.load({
     }
 
     async function toggle() {
+      ping('toggle busy=' + busy + ' on=' + state.on)
       if (busy) return
       busy = true
       if (!state.on) toast('请点击要戴上看清的那个窗口（30 秒内）', 3200)
@@ -341,15 +362,26 @@ window.__ModuleLoader__.load({
         }
         makeDraggable()
 
+        // 按钮万一被宿主别的东西盖住，快捷键照样能切：Ctrl+Shift+L
+        const onKey = (e) => {
+          if (!e.ctrlKey || !e.shiftKey) return
+          if (String(e.key || '').toLowerCase() !== 'l') return
+          e.preventDefault()
+          toggle()
+        }
+        window.addEventListener('keydown', onKey)
+
         toastEl = document.createElement('div')
         toastEl.className = 'ym-look-toast'
         document.body.appendChild(toastEl)
 
         refresh()
+        ping('client loaded v1.1.1')
         const t = setInterval(refresh, 5000)
 
         ctx.effect(() => () => {
           clearInterval(t)
+          window.removeEventListener('keydown', onKey)
           if (styleEl) styleEl.remove()
           if (wrap) wrap.remove()
           if (toastEl) toastEl.remove()

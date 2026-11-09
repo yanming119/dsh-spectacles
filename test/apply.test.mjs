@@ -50,7 +50,7 @@ function fakeRes() {
   return res
 }
 
-test('apply() 能起来：系统提示 + 三个工具 + 三条路由', async () => {
+test('apply() 能起来：系统提示 + 三个工具 + 四条路由', async () => {
   const { ctx, tools, routes, sections } = fakeCtx()
   await plugin.apply(ctx)
   assert.equal(sections.length, 1)
@@ -58,7 +58,7 @@ test('apply() 能起来：系统提示 + 三个工具 + 三条路由', async () 
     tools.map((t) => t.name).sort(),
     ['look', 'read_text', 'see'],
   )
-  assert.deepEqual([...routes.keys()].sort(), ['/dsh-look/pick', '/dsh-look/region', '/dsh-look/state'])
+  assert.deepEqual([...routes.keys()].sort(), ['/dsh-look/pick', '/dsh-look/ping', '/dsh-look/region', '/dsh-look/state'])
 })
 
 test('GET /dsh-look/state 回一份能用的状态', async () => {
@@ -73,7 +73,7 @@ test('GET /dsh-look/state 回一份能用的状态', async () => {
   assert.match(res.headers['content-type'], /json/)
 })
 
-test('三个工具的描述里都写着「只读」', async () => {
+test('每个工具的描述里都写着「只读」', async () => {
   const { ctx, tools } = fakeCtx()
   await plugin.apply(ctx)
   for (const t of tools) {

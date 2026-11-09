@@ -1,56 +1,91 @@
-import assert from 'node:assert/strict'
 import test from 'node:test'
+import assert from 'node:assert/strict'
+import { gate, ruleText, stateFromPick } from '../index.js'
 
-import { gate, stateFromPick } from '../index.js'
+test('rule: 戴着时说出窗口名和 hwnd', () => {
+  const t = ruleText({ on: true, hwnd: 42, title: '微信', size: [320, 180] })
+  assert.match(t, /现在戴着眼镜/)
+  assert.match(t, /微信/)
+  assert.match(t, /42/)
+  assert.match(t, /320×180/)
+  assert.match(t, /read_text/)
+})
 
-const worn = { on: true, hwnd: 4242, title: '微信' }
+test('rule: 没戴（自用版）说明可以读整屏', () => {
+  const t = ruleText({ on: false })
+  assert.match(t, /没戴眼镜/)
+  assert.match(t, /整屏/)
+})
+
+test('rule: 戴着和没戴给出的规则不一样', () => {
+  assert.notEqual(ruleText({ on: true, hwnd: 1, title: 'a' }), ruleText({ on: false }))
+})
+
+const pub = { internal: false }
+const worn = { on: true, hwnd: 1234, title: 'x', rect: [0, 0, 800, 600] }
 
 test('没戴：一律拒绝', () => {
-  const g = gate({ on: false }, {})
+  const g = gate({ on: false }, {}, pub)
   assert.equal(g.ok, false)
-  assert.match(g.error, /眼镜没戴/)
+  assert.match(g.error, /没戴/)
 })
 
 test('没戴：连传了 window 也拒绝（摘掉=放任，不偷偷读）', () => {
-  const g = gate({ on: false }, { window: '1234' })
+  const g = gate({ on: false }, { window: '1234' }, pub)
   assert.equal(g.ok, false)
 })
 
-test('戴着 + 显式 window：照用，via=explicit', () => {
-  const g = gate(worn, { window: '99', crop: '0,0,10,10' })
+test('戴着时指名别的窗口：拒绝（排他）', () => {
+  const g = gate(worn, { window: '99', crop: '0,0,10,10' }, pub)
+  assert.equal(g.ok, false)
+  assert.match(g.error, /只读/)
+})
+
+test('显式 window（同一个）：via=explicit', () => {
+  const g = gate(worn, { window: '1234', crop: '0,0,10,10' }, pub)
   assert.equal(g.ok, true)
   assert.equal(g.via, 'explicit')
-  assert.equal(g.args.window, '99')
+  assert.equal(g.mode, 'window')
+  assert.equal(g.args.window, '1234')
   assert.equal(g.args.crop, '0,0,10,10')
 })
 
-test('戴着 + 不传 window：落到戴着的那个，绝不整屏', () => {
-  const g = gate(worn, {})
+test('不传 window：落到戴着的那个窗口', () => {
+  const g = gate(worn, {}, pub)
   assert.equal(g.ok, true)
   assert.equal(g.via, 'glasses')
-  assert.equal(g.args.window, '4242')
+  assert.equal(g.args.window, '1234')
+  assert.equal(g.args.crop, undefined)
 })
 
-test('戴着 + 存过 crop：不传 crop 时用它', () => {
-  const g = gate({ ...worn, crop: [10, 20, 320, 180] }, {})
+test('戴着且有 crop：自动带上', () => {
+  const g = gate({ ...worn, crop: [10, 20, 320, 180] }, {}, pub)
   assert.equal(g.args.crop, '10,20,320,180')
 })
 
-test('戴着 + 已经传了 crop：不覆盖人的意思', () => {
-  const g = gate({ ...worn, crop: [10, 20, 320, 180] }, { crop: '0,0,5,5' })
+test('已有 crop：不被 state.crop 覆盖', () => {
+  const g = gate({ ...worn, crop: [10, 20, 320, 180] }, { crop: '0,0,5,5' }, pub)
   assert.equal(g.args.crop, '0,0,5,5')
 })
 
-test('戴着但没记住窗口：拒绝，别回退整屏', () => {
-  const g = gate({ on: true }, {})
+test('戴了但没记 hwnd：拒绝并提示重选', () => {
+  const g = gate({ on: true }, {}, pub)
   assert.equal(g.ok, false)
-  assert.match(g.error, /没记住窗口/)
+  assert.match(g.error, /重新选/)
 })
 
 test('不改调用方传进来的 args', () => {
   const args = {}
-  gate(worn, args)
+  gate(worn, args, pub)
   assert.deepEqual(args, {})
+})
+
+test('自用版：没戴也能整屏', () => {
+  const g = gate({ on: false }, { crop: '0,0,10,10' }, { internal: true })
+  assert.equal(g.ok, true)
+  assert.equal(g.mode, 'fullscreen')
+  assert.equal(g.via, 'internal')
+  assert.equal(g.args.crop, '0,0,10,10')
 })
 
 test('选整个窗口：size 就是窗口宽高，没有 crop', () => {
