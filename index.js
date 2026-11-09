@@ -179,15 +179,30 @@ function runPs(script, argv) {
   })
 }
 
+function captureHint(cap) {
+  if (!cap || cap.ok) return null
+  if (cap.error === 'printwindow-failed') {
+    return (
+      '这个窗口不吃「重画」这条请求（GPU 直绘的窗口都这样），所以抓不到它的画面。' +
+      '要么把它切到最前再让我看；要么允许临时置顶抓一帧（DSH_LOOK_RAISE=1，抓的那一下屏幕会闪一下）。'
+    )
+  }
+  return null
+}
+
 function runLook(args, via) {
   guardWindow('look', args)
   guardOut(args)
   const p = runLookRaw(args)
   return p.then((cap) => {
-    audit({ tool: 'look', window: args.window || null, crop: args.crop || null, via: via || null, region: (cap && cap.region) || null, png: (cap && cap.png) || null, ok: !!(cap && cap.ok) })
+    audit({ tool: 'look', window: args.window || null, crop: args.crop || null, via: via || null, source: (cap && cap.source) || null, region: (cap && cap.region) || null, png: (cap && cap.png) || null, ok: !!(cap && cap.ok) })
+    const hint = captureHint(cap)
+    if (hint) throw new Error(hint)
     return cap
   })
 }
+
+const RAISE = String(process.env.DSH_LOOK_RAISE || '') !== '0'
 
 function runLookRaw(args) {
   if (args.window) {
@@ -196,6 +211,8 @@ function runLookRaw(args) {
     if (typeof args.scale === 'number' && args.scale > 0) argv.push('-Scale', String(args.scale))
     if (args.image === true) argv.push('-Image')
     if (args.out) argv.push('-Out', String(args.out))
+    // 这个窗口不吃 PrintWindow（GPU 直绘）时，临时把它提到最上层、从屏幕抓它那一块、立刻还原。
+    if (RAISE) argv.push('-Raise')
     return runPs(WIN_SCRIPT, argv)
   }
   const argv = []

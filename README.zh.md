@@ -1,6 +1,6 @@
 # 砚明的金丝眼镜 · Spectacles
 
-**V1 版** —— 只干一件事：指定一个窗口（或框住它里面的一块），把里面的字读清楚。别的都故意没放进来。
+**V1.1 版** —— 只干一件事：指定一个窗口（或框住它里面的一块），把里面的字读清楚。别的都故意没放进来。
 
 **指定一个窗口，让 AI 把里面的字看清楚。**
 
@@ -54,7 +54,7 @@ dsh plugin --profile desktop add dsh-spectacles
 不想走 npm 也行，直接钉源码：
 
 ```
-dsh plugin --profile desktop add github:yanming119/dsh-spectacles#1.0.0
+dsh plugin --profile desktop add github:yanming119/dsh-spectacles#1.1.0
 ```
 
 装完重启 DSH，右下角会多出一个胶囊按钮「戴上眼镜」。

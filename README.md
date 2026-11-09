@@ -1,6 +1,6 @@
 # Spectacles · 砚明的金丝眼镜
 
-**V1** — one job: point at a window, read its text clearly. Nothing else is in here on purpose.
+**V1.1** — one job: point at a window, read its text clearly. Nothing else is in here on purpose.
 
 **Point at one window. Let the AI read it clearly.**
 
@@ -54,7 +54,7 @@ dsh plugin --profile desktop add dsh-spectacles
 If you'd rather pin the source (no registry), this works too:
 
 ```
-dsh plugin --profile desktop add github:yanming119/dsh-spectacles#1.0.0
+dsh plugin --profile desktop add github:yanming119/dsh-spectacles#1.1.0
 ```
 
 Restart DSH. A pill button labelled **戴上眼镜** (put on the glasses) appears in the bottom-right corner.

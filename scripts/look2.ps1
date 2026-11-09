@@ -3,6 +3,7 @@
   [string]$Crop = "",
   [double]$Scale = 1.0,
   [switch]$Image,
+  [switch]$Raise,
   [switch]$List,
   [string]$Out = "",
   [string]$SaveDir = ""
@@ -28,6 +29,7 @@ public class W2 {
   [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr h, out uint pid);
   [DllImport("user32.dll")] public static extern int GetWindowLong(IntPtr h, int idx);
   [DllImport("user32.dll")] public static extern bool PrintWindow(IntPtr h, IntPtr hdc, uint flags);
+  [DllImport("user32.dll")] public static extern bool SetWindowPos(IntPtr h, IntPtr after, int x, int y, int cx, int cy, uint flags);
 
   public struct RECT { public int Left, Top, Right, Bottom; }
 
@@ -117,7 +119,30 @@ $hdc = $g.GetHdc()
 $ok = [W2]::PrintWindow($w.H, $hdc, 2)
 $g.ReleaseHdc($hdc)
 $g.Dispose()
-if (-not $ok) { @{ ok = $false; error = "PrintWindow failed" } | ConvertTo-Json -Compress; exit 1 }
+$source = 'printwindow'
+if (-not $ok) {
+  if (-not $Raise) {
+    @{ ok = $false; error = 'printwindow-failed' } | ConvertTo-Json -Compress
+    exit 1
+  }
+  # 这个窗口不吃「重画」这条请求（GPU 直绘常见）。临时把它提到最上层，从屏幕抓它那一块，再立刻还原。
+  # 不抢焦点（NOACTIVATE）、不移动、不改大小。
+  $exBefore = [W2]::GetWindowLong($w.H, -20)
+  $wasTop = (($exBefore -band 0x0008) -ne 0)
+  [W2]::SetWindowPos($w.H, [IntPtr](-1), 0, 0, 0, 0, (0x0002 -bor 0x0001 -bor 0x0010)) | Out-Null
+  try {
+    Start-Sleep -Milliseconds 90
+    $g2 = [System.Drawing.Graphics]::FromImage($full)
+    $sz = New-Object System.Drawing.Size ([int]$ww), ([int]$wh)
+    $g2.CopyFromScreen([int]$w.L, [int]$w.T, 0, 0, $sz)
+    $g2.Dispose()
+    $source = 'screen-raised'
+  } finally {
+    if (-not $wasTop) {
+      [W2]::SetWindowPos($w.H, [IntPtr](-2), 0, 0, 0, 0, (0x0002 -bor 0x0001 -bor 0x0010)) | Out-Null
+    }
+  }
+}
 
 # 可选区域裁剪（相对窗口左上角）
 $rect = New-Object System.Drawing.Rectangle 0, 0, $ww, $wh
@@ -198,7 +223,7 @@ $avg = "#{0:X2}{1:X2}{2:X2}" -f [int]($sumR / $n), [int]($sumG / $n), [int]($sum
 $res = [ordered]@{
   ok        = $true
   when      = (Get-Date -Format 'yyyy-MM-dd HH:mm:ss.fff')
-  source    = 'printwindow'
+  source    = $source
   window    = [ordered]@{ hwnd = [int64]$w.H; title = $w.Title; pid = $w.Pid; rect = @($w.L, $w.T, $ww, $wh) }
   region    = @($rect.X, $rect.Y, $rect.Width, $rect.Height)
   avgColor  = $avg
