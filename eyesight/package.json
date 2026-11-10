@@ -14,7 +14,8 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/yanming119/dsh-eyesight.git"
+    "url": "https://github.com/yanming119/dsh-spectacles.git",
+    "directory": "eyesight"
   },
   "homepage": "https://github.com/yanming119/dsh-eyesight#readme",
   "bugs": {
