@@ -1,0 +1,58 @@
+{
+  "name": "dsh-eyesight",
+  "version": "1.0.0",
+  "description": "一眼看清：让 AI 看清整块屏幕——整屏缩略当地图，按块 1:1 细看，界面上有一只眼睛随时开关",
+  "type": "module",
+  "main": "index.js",
+  "files": [
+    "index.js",
+    "client.js",
+    "cordis.patch.yml",
+    "scripts/",
+    "README.md",
+    "LICENSE"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yanming119/dsh-eyesight.git"
+  },
+  "homepage": "https://github.com/yanming119/dsh-eyesight#readme",
+  "bugs": {
+    "url": "https://github.com/yanming119/dsh-eyesight/issues"
+  },
+  "keywords": [
+    "dsh-plugin",
+    "deepseek-harness",
+    "vision",
+    "screenshot",
+    "screen-reading"
+  ],
+  "dsh": {
+    "manifestVersion": 1,
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "inject": []
+    }
+  },
+  "peerDependencies": {
+    "@deepseek-ai/dsh-tools": ">=0.1.0"
+  },
+  "peerDependenciesMeta": {
+    "@deepseek-ai/dsh-tools": {
+      "optional": true
+    }
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "license": "MIT",
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./package.json": "./package.json"
+  }
+}
