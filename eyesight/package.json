@@ -1,7 +1,7 @@
 {
   "name": "dsh-eyesight",
-  "version": "1.0.0",
-  "description": "一眼看清：让 AI 看清整块屏幕——整屏缩略当地图，按块 1:1 细看，界面上有一只眼睛随时开关",
+  "version": "1.1.0",
+  "description": "一眼看清：让 AI 看清整块屏幕和大图——整屏缩略当地图，按块 1:1 细看，界面上有一只眼睛随时开关",
   "type": "module",
   "main": "index.js",
   "files": [
@@ -10,12 +10,12 @@
     "cordis.patch.yml",
     "scripts/",
     "README.md",
+    "CHANGELOG.md",
     "LICENSE"
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/yanming119/dsh-spectacles.git",
-    "directory": "eyesight"
+    "url": "git+https://github.com/yanming119/dsh-eyesight.git"
   },
   "homepage": "https://github.com/yanming119/dsh-eyesight#readme",
   "bugs": {

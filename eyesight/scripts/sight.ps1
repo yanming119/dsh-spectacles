@@ -1,5 +1,6 @@
 ﻿param(
   [Parameter(Mandatory = $true)][ValidateSet('capture', 'crop', 'wide', 'hash', 'diff')][string]$Mode,
+  [string]$Image = '',
   [string]$Frame = '',
   [string]$Frame2 = '',
   [string]$Out = '',
